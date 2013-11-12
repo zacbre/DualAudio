@@ -5,7 +5,7 @@ Allows you to output audio to two outputs instead of Windows' limit of one outpu
 
 Instructions:
 First, you'll need to install Virtual Audio Cable:
-http://www.softpedia.com/progDownload/Vi...-2217.html
+http://www.softpedia.com/progDownload/Virtual-Audio-Cable-Download-2217.html
 
 Virtual Audio cable comes with a program called "Audio Repeater". This audio repeater constantly says "Trial" every 5 seconds, and it really interrupts your music or anything in general. I decided I would make a copy of this without all of the hassle.
 Once you have Virtual Audio cable installed, you'll need to go to your Audio Settings and set your Default output device to Line 1 (Virtual Audio Cable).
