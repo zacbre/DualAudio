@@ -11,13 +11,9 @@ namespace dualaudio
 {
     class Program
     {
-        static int speaker1;
-        static int speaker2;
-        static int input;
+        static int speaker1, speaker2, input;
         static WasapiLoopbackCapture waveIn;
-        static BufferedWaveProvider m1;
-        static BufferedWaveProvider m2;
-        
+        static BufferedWaveProvider m1, m2;       
         public static void Main()
         {
             //Decrypt resources and load.
@@ -28,11 +24,6 @@ namespace dualaudio
             for (int waveInDevice = 0; waveInDevice < waveInDevices; waveInDevice++)
             {
                 WaveInCapabilities deviceInfo = WaveIn.GetCapabilities(waveInDevice);
-                /*if (deviceInfo.ProductName.StartsWith("Line 1"))
-                {
-                    input = waveInDevice;
-                    Console.WriteLine("Detected input as {1}:{0}", deviceInfo.ProductName, input);
-                }*/
                 Console.WriteLine("{0}: {1}, {2} channels.", waveInDevice, deviceInfo.ProductName, deviceInfo.Channels);
             }
             input:
@@ -49,16 +40,6 @@ namespace dualaudio
             for (int waveOutDevice = 0; waveOutDevice < waveOutDevices; waveOutDevice++)
             {
                 WaveOutCapabilities deviceInfo = WaveOut.GetCapabilities(waveOutDevice);
-                /*if (deviceInfo.ProductName.StartsWith("ASUS"))
-                {
-                    speaker2 = waveOutDevice;
-                    Console.WriteLine("Detected output2 as {1}:{0}", deviceInfo.ProductName, speaker2);
-                }
-                else if (deviceInfo.ProductName.StartsWith("Speakers"))
-                {
-                    speaker1 = waveOutDevice;
-                    Console.WriteLine("Detected output1 as {1}:{0}", deviceInfo.ProductName, speaker1);
-                }*/
                 Console.WriteLine("{0}: {1}, {2}", waveOutDevice, deviceInfo.ProductName, deviceInfo.Channels);
             }
             output1:
@@ -81,25 +62,29 @@ namespace dualaudio
                 goto output2;
             }
             if (speaker2 != speaker1)
-            {
                 Console.WriteLine("Successfully set Output2 as device {0}.", speaker2);
-            }
             else
             {
                 Console.WriteLine("You can't select the same output!");
                 goto output2;
             }
+
             Console.WriteLine("");
+
             waveIn = new WasapiLoopbackCapture();
+
             Console.WriteLine("Initialized Loopback Capture...");
+
             waveIn.DataAvailable += InputBufferToFileCallback;
-            waveIn.StartRecording();
+            waveIn.StartRecording(); //Start our loopback capture.
+
             m1 = new BufferedWaveProvider(waveIn.WaveFormat);
             m2 = new BufferedWaveProvider(waveIn.WaveFormat);
+
             m1.BufferLength = 1024 * 1024 * 5;
-            m2.BufferLength = 1024 * 1024 * 5;
-            Thread.Sleep(1000);
-            //initialize two audio output devices.
+            m2.BufferLength = 1024 * 1024 * 5; //Set buffer to 5MB
+
+            //initialize two chosen audio output devices.
             WaveOut device1 = new NAudio.Wave.WaveOut();
             device1.DeviceNumber = speaker1;
             device1.Init(m1);
@@ -121,7 +106,7 @@ namespace dualaudio
         
         private static void InputBufferToFileCallback(object sender, WaveInEventArgs e)
         {
-            //play audio through two inputs.
+            //write to our audio sample buffers.
             m1.AddSamples(e.Buffer, 0, e.BytesRecorded);          
             m2.AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
