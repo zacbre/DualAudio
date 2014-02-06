@@ -11,64 +11,63 @@ namespace dualaudio
 {
     class Program
     {
-        static int speaker1, speaker2, input;
         static WasapiLoopbackCapture waveIn;
-        static BufferedWaveProvider m1, m2;       
+        static BufferedWaveProvider[] m1;
+        static int totaloutputs = 0;
         public static void Main()
         {
             //Decrypt resources and load.
             Console.WriteLine("---------------------------------------------------------------------");
             Console.WriteLine("Dual Audio - (C) 2013 Thr. Using NAudio (http://naudio.codeplex.com/)");
             Console.WriteLine("---------------------------------------------------------------------");
+
             int waveInDevices = WaveIn.DeviceCount;
+            int waveOutDevices = WaveOut.DeviceCount;
+            int inputdevice = 0;
+            int output = 0;
+
+            List<int> Outputs = new List<int>();
+            Console.WriteLine("Located {0} Input Devices.\n", waveInDevices);
+            Console.Write("How many outputs to bind to? (max {0}): ", waveOutDevices);
+            //grab inputs.
+            
+            while (!int.TryParse(Console.ReadLine(), out totaloutputs) || totaloutputs > waveOutDevices)
+                Console.Write("How many outputs to bind to? (max {0}): ", waveOutDevices);
+
             for (int waveInDevice = 0; waveInDevice < waveInDevices; waveInDevice++)
             {
                 WaveInCapabilities deviceInfo = WaveIn.GetCapabilities(waveInDevice);
                 Console.WriteLine("{0}: {1}, {2} channels.", waveInDevice, deviceInfo.ProductName, deviceInfo.Channels);
             }
-            input:
-            Console.Write("Select Input: ");
-            input = int.Parse(Console.ReadLine());
-            if (input > waveInDevices - 1)
-            {
-                Console.WriteLine("That device doesn't exist!");
-                goto input;
-            }
-            Console.WriteLine("Successfully set input as device {0}.", input);
-            Console.WriteLine("");
-            int waveOutDevices = WaveOut.DeviceCount;
-            for (int waveOutDevice = 0; waveOutDevice < waveOutDevices; waveOutDevice++)
-            {
-                WaveOutCapabilities deviceInfo = WaveOut.GetCapabilities(waveOutDevice);
-                Console.WriteLine("{0}: {1}, {2}", waveOutDevice, deviceInfo.ProductName, deviceInfo.Channels);
-            }
-            output1:
-            Console.Write("Select Device1: ");
-            speaker1 = int.Parse(Console.ReadLine());
-            if (speaker1 > waveOutDevices - 1)
-            {
-                Console.WriteLine("That device doesn't exist!");
-                goto output1;
-            }
-            Console.WriteLine("Successfully set Output1 as device {0}.", speaker1);
-            ///
-            output2:
-            Console.WriteLine("");
-            Console.Write("Select Device2: ");
-            speaker2 = int.Parse(Console.ReadLine());
-            if (speaker2 > waveOutDevices - 1)
-            {
-                Console.WriteLine("That device doesn't exist!");
-                goto output2;
-            }
-            if (speaker2 != speaker1)
-                Console.WriteLine("Successfully set Output2 as device {0}.", speaker2);
-            else
-            {
-                Console.WriteLine("You can't select the same output!");
-                goto output2;
-            }
 
+            Console.Write("Select Input Line: ");           
+            while (!int.TryParse(Console.ReadLine(), out inputdevice))
+                Console.Write("Select Input Line: ");
+
+            Console.WriteLine("Successfully set input as device {0}.", inputdevice);
+            Console.WriteLine("");
+            output = totaloutputs;
+            while (output > 0)
+            {
+                for (int waveOutDevice = 0; waveOutDevice < waveOutDevices; waveOutDevice++)
+                {
+                    if (!Outputs.Contains(waveOutDevice))
+                    {
+                        WaveOutCapabilities deviceInfo = WaveOut.GetCapabilities(waveOutDevice);
+                        Console.WriteLine("{0}: {1}, {2}", waveOutDevice, deviceInfo.ProductName, deviceInfo.Channels);
+                    }
+                }
+                Console.Write("Select the output device for playback{0}: ", (totaloutputs - output).ToString());
+                int device = 0;
+                while(!int.TryParse(Console.ReadLine(), out device) || device > waveOutDevices - 1)
+                {
+                    Console.WriteLine("Invalid Device!");
+                    Console.Write("Select the output device for playback{0}: ", (totaloutputs - output).ToString());
+                }
+                Outputs.Add(device);
+                Console.WriteLine("Successfully set the output device for playback{0}.", (totaloutputs - output).ToString());
+                output--;
+            }
             Console.WriteLine("");
 
             waveIn = new WasapiLoopbackCapture();
@@ -77,28 +76,21 @@ namespace dualaudio
 
             waveIn.DataAvailable += InputBufferToFileCallback;
             waveIn.StartRecording(); //Start our loopback capture.
+            WaveOut[] devices = new WaveOut[totaloutputs];
 
-            m1 = new BufferedWaveProvider(waveIn.WaveFormat);
-            m2 = new BufferedWaveProvider(waveIn.WaveFormat);
+            m1 = new BufferedWaveProvider[totaloutputs];
+            for (int i = 0; i < totaloutputs; i++)
+            {
+                m1[i] = new BufferedWaveProvider(waveIn.WaveFormat);
+                m1[i].BufferLength = 1024 * 1024 * 5;
+                devices[i] = new WaveOut();
+                devices[i].DeviceNumber = Outputs[i];
+                devices[i].Init(m1[i]);
+                Console.WriteLine("Initializing Device{0}...", i);
+                devices[i].Play();
+                Console.WriteLine("Started Playing on Device{0}...", i);
+            }
 
-            m1.BufferLength = 1024 * 1024 * 5;
-            m2.BufferLength = 1024 * 1024 * 5; //Set buffer to 5MB
-
-            //initialize two chosen audio output devices.
-            WaveOut device1 = new NAudio.Wave.WaveOut();
-            device1.DeviceNumber = speaker1;
-            device1.Init(m1);
-            Console.WriteLine("Initializing Device1...");
-            device1.Play();
-            Console.WriteLine("Started Playing on Device1...");
-
-            WaveOut device2 = new NAudio.Wave.WaveOut();
-            device2.DeviceNumber = speaker2;
-            device2.Init(m2);
-            Console.WriteLine("Initializing Device2...");
-            device2.Play();
-            Console.WriteLine("Started Playing on Device2...");
-            //Now 
             while (true)
                 Thread.Sleep(10000);
         }
@@ -107,8 +99,8 @@ namespace dualaudio
         private static void InputBufferToFileCallback(object sender, WaveInEventArgs e)
         {
             //write to our audio sample buffers.
-            m1.AddSamples(e.Buffer, 0, e.BytesRecorded);          
-            m2.AddSamples(e.Buffer, 0, e.BytesRecorded);
+            for (int i = 0; i < totaloutputs; i++)
+                m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);          
         }
     }
 }
