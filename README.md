@@ -1,7 +1,7 @@
 DualAudio (C) 2013 Thr
 =======
 
-Allows you to output audio to two outputs instead of Windows' limit of one output.
+Allows you to output audio to an unlimited number of outputs instead of Windows' limit of one output.
 
 Instructions:
 First, you'll need to install Virtual Audio Cable:
