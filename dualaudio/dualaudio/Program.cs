@@ -85,6 +85,7 @@ namespace dualaudio
                 m1[i].BufferLength = 1024 * 1024 * 5;
                 devices[i] = new WaveOut();
                 devices[i].DeviceNumber = Outputs[i];
+                devices[i].DesiredLatency = 51;
                 devices[i].Init(m1[i]);
                 Console.WriteLine("Initializing Device{0}...", i);
                 devices[i].Play();
@@ -100,7 +101,7 @@ namespace dualaudio
         {
             //write to our audio sample buffers.
             for (int i = 0; i < totaloutputs; i++)
-                m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);          
+                m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);   
         }
     }
 }

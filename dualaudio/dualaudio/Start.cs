@@ -18,7 +18,7 @@ namespace dualaudio
         }
         static void CurrentDomain_UnhandledException(object sender, UnhandledExceptionEventArgs e)
         {
-            Console.WriteLine("There was an error!", "Error!\n" + e.ExceptionObject.ToString());
+            Console.WriteLine("There was an error! {0}", "Error!\n" + e.ExceptionObject.ToString());
         }
 
         private static System.Reflection.Assembly pHandleAssemblyResolver(object sender, ResolveEventArgs args)
