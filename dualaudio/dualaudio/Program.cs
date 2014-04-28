@@ -82,10 +82,13 @@ namespace dualaudio
             for (int i = 0; i < totaloutputs; i++)
             {
                 m1[i] = new BufferedWaveProvider(waveIn.WaveFormat);
-                m1[i].BufferLength = 1024 * 1024 * 5;
+                m1[i].BufferLength = 1024 * 1024 * 10;
+                m1[i].DiscardOnBufferOverflow = true;
                 devices[i] = new WaveOut();
+                devices[i].Volume = 1;
+                devices[i].NumberOfBuffers = 3;
                 devices[i].DeviceNumber = Outputs[i];
-                devices[i].DesiredLatency = 51;
+                devices[i].DesiredLatency = 40;
                 devices[i].Init(m1[i]);
                 Console.WriteLine("Initializing Device{0}...", i);
                 devices[i].Play();
@@ -101,7 +104,7 @@ namespace dualaudio
         {
             //write to our audio sample buffers.
             for (int i = 0; i < totaloutputs; i++)
-                m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);   
+                m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);
         }
     }
 }
