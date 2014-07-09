@@ -14,11 +14,13 @@ namespace dualaudio
         static WasapiLoopbackCapture waveIn;
         static BufferedWaveProvider[] m1;
         static int totaloutputs = 0;
+        static bool dumptofile = false;
+        static WaveFileWriter f;
         public static void Main()
         {
             //Decrypt resources and load.
             Console.WriteLine("---------------------------------------------------------------------");
-            Console.WriteLine("Dual Audio - (C) 2013 Thr. Using NAudio (http://naudio.codeplex.com/)");
+            Console.WriteLine("Dual Audio - (C) 2014 Thr. Using NAudio (http://naudio.codeplex.com/)");
             Console.WriteLine("---------------------------------------------------------------------");
 
             int waveInDevices = WaveIn.DeviceCount;
@@ -69,13 +71,32 @@ namespace dualaudio
                 output--;
             }
             Console.WriteLine("");
-
+            string p = "";
+            Console.Write("Dump to file? (Y\\N) ");
+            while((p = Console.ReadLine().ToLower()) != "y" && p != "n")
+            {
+                Console.WriteLine("");
+                Console.Write("Dump to file? (Y\\N) ");
+            }
+            dumptofile = Convert.ToBoolean(p == "y" ? true : false);
+           
             waveIn = new WasapiLoopbackCapture();
 
             Console.WriteLine("Initialized Loopback Capture...");
-
+            if (dumptofile)
+            {
+                string filename = "";
+                Console.Write("Filename (without extension): ");
+                while((filename = Console.ReadLine()) == "")
+                {
+                    Console.WriteLine("");
+                    Console.Write("Filename (without extension): ");
+                }
+                f = new WaveFileWriter(File.OpenWrite(Environment.CurrentDirectory + "\\" + filename + ".wav"), waveIn.WaveFormat);
+            }
             waveIn.DataAvailable += InputBufferToFileCallback;
             waveIn.StartRecording(); //Start our loopback capture.
+            
             WaveOut[] devices = new WaveOut[totaloutputs];
 
             m1 = new BufferedWaveProvider[totaloutputs];
@@ -88,7 +109,7 @@ namespace dualaudio
                 devices[i].Volume = 1;
                 devices[i].NumberOfBuffers = 3;
                 devices[i].DeviceNumber = Outputs[i];
-                devices[i].DesiredLatency = 40;
+                devices[i].DesiredLatency = 61;
                 devices[i].Init(m1[i]);
                 Console.WriteLine("Initializing Device{0}...", i);
                 devices[i].Play();
@@ -96,7 +117,12 @@ namespace dualaudio
             }
 
             while (true)
-                Thread.Sleep(10000);
+                if(Console.ReadLine().ToLower() == "s")
+                {
+                    waveIn.StopRecording();
+                    f.Close();
+                    Environment.Exit(0);
+                }
         }
 
         
@@ -105,6 +131,10 @@ namespace dualaudio
             //write to our audio sample buffers.
             for (int i = 0; i < totaloutputs; i++)
                 m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);
+            if(dumptofile && f.CanWrite)
+            {
+                f.Write(e.Buffer, 0, e.BytesRecorded);
+            }
         }
     }
 }
