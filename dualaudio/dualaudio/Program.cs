@@ -79,6 +79,14 @@ namespace dualaudio
                 Console.Write("Dump to file? (Y\\N) ");
             }
             dumptofile = Convert.ToBoolean(p == "y" ? true : false);
+
+            Console.Write("Amplify Output? (Y\\N) ");
+            while ((p = Console.ReadLine().ToLower()) != "y" && p != "n")
+            {
+                Console.WriteLine("");
+                Console.Write("Amplify Output? (Y\\N) ");
+            }
+            amplify = Convert.ToBoolean(p == "y" ? true : false);
            
             waveIn = new WasapiLoopbackCapture();
 
@@ -106,7 +114,7 @@ namespace dualaudio
                 m1[i].BufferLength = 1024 * 1024 * 10;
                 m1[i].DiscardOnBufferOverflow = true;
                 devices[i] = new WaveOut();
-                devices[i].Volume = 1;
+                devices[i].Volume = 3;
                 devices[i].NumberOfBuffers = 3;
                 devices[i].DeviceNumber = Outputs[i];
                 devices[i].DesiredLatency = 61;
@@ -119,21 +127,44 @@ namespace dualaudio
             while (true)
                 if(Console.ReadLine().ToLower() == "s")
                 {
+                    stop = true;
+                    for (int i = 0; i < devices.Length; i++)
+                        devices[i].Stop();
                     waveIn.StopRecording();
                     f.Close();
                     Environment.Exit(0);
                 }
         }
 
-        
+        private static bool stop = false;
+        private static bool amplify = false;
+        private static int amplification = 10;
         private static void InputBufferToFileCallback(object sender, WaveInEventArgs e)
         {
             //write to our audio sample buffers.
-            for (int i = 0; i < totaloutputs; i++)
-                m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);
-            if(dumptofile && f.CanWrite)
+            if (!stop)
             {
-                f.Write(e.Buffer, 0, e.BytesRecorded);
+                if (amplify)
+                {
+                    var erg = new byte[e.BytesRecorded];
+                    for (int i = 0; i < e.BytesRecorded; i += 2)
+                    {
+                        var sample = (short)(e.Buffer[i] | (e.Buffer[i + 1] << 8));
+                        erg[i] = (byte)((sample * amplification) & 0xff);
+                        erg[i + 1] = (byte)(((sample * amplification) >> 8) & 0xff);
+                    }
+                    for (int i = 0; i < totaloutputs; i++)
+                        m1[i].AddSamples(erg, 0, e.BytesRecorded);
+                }
+                else
+                {
+                    for (int i = 0; i < totaloutputs; i++)
+                        m1[i].AddSamples(e.Buffer, 0, e.BytesRecorded);
+                }
+                if (dumptofile && f.CanWrite)
+                {
+                    f.Write(e.Buffer, 0, e.BytesRecorded);
+                }
             }
         }
     }
