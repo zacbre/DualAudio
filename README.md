@@ -1,4 +1,4 @@
-DualAudio (C) 2013 Thr
+DualAudio (C) 2013
 =======
 
 Allows you to output audio to an unlimited number of outputs instead of Windows' limit of one output.
